@@ -1,1 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAWYNT // Ultimate Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --hazard-orange: #ff6a00;
+            --bg: #050608;
+            --paper: #fdfdfd;
+            --ink: #1a1a2e;
+            --success-green: #2ecc71;
+        }
 
+        body {
+            background: var(--bg);
+            color: white;
+            font-family: -apple-system, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            transition: background 0.2s;
+        }
+
+        /* --- BIG PRAISE TEXT --- */
+        .praise-text {
+            position: absolute;
+            left: 50%;
+            top: -40px;
+            transform: translateX(-50%);
+            color: var(--success-green);
+            font-weight: 900;
+            font-size: 2.5rem; /* MASSIVE SIZE */
+            pointer-events: none;
+            opacity: 0;
+            text-transform: uppercase;
+            white-space: nowrap;
+            text-shadow: 0 0 20px rgba(46, 204, 113, 0.6);
+            z-index: 200;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+        }
+        .loader-logo { font-size: 3rem; font-weight: 900; letter-spacing: 15px; color: var(--neon-blue); }
+
+        /* --- GAWYNT CLOCK --- */
+        .clock-section { margin-top: 60px; text-align: center; opacity: 0; }
+        .picker-box {
+            width: 320px; height: 200px; background: #111; border-radius: 25px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);
+            mask-image: linear-gradient(to bottom, transparent, black 40%, black 60%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 40%, black 60%, transparent);
+        }
+        .selection-highlight {
+            position:absolute; width:90%; height:44px; 
+            border-top:1px solid var(--neon-blue); border-bottom:1px solid var(--neon-blue); 
+            pointer-events:none; z-index:10;
+        }
+        .wheel { width: 80px; height: 100%; cursor: grab; }
+        .item { height: 44px; line-height: 44px; font-size: 2rem; font-weight: 600; color: #333; }
+        .item.active { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+
+        /* --- DRAWER --- */
+        .gawynt-drawer {
+            position: fixed; bottom: -480px; width: 100%; max-width: 500px; height: 550px;
+            background: var(--paper); border-radius: 30px 30px 0 0; z-index: 100; color: var(--ink); padding: 20px;
+        }
+        .task-row { display: flex; align-items: center; height: 45px; gap: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
+        .check-btn { width: 28px; height: 28px; border: 2px solid var(--ink); cursor: pointer; border-radius: 6px; }
+        .check-btn.done { background: var(--success-green); border-color: var(--success-green); }
+
+        .btn-main {
+            background: var(--neon-blue); color: black; border: none; padding: 15px 40px;
+            border-radius: 50px; font-weight: 900; margin-top: 30px; cursor: pointer;
+        }
+
+        .toggle-gawynt {
+            position: fixed; bottom: 30px; background: var(--hazard-orange); color: white;
+            border: none; padding: 12px 25px; border-radius: 50px; font-weight: bold; z-index: 101; cursor: pointer;
+        }
+    </style>
+</head>
+<body onclick="stopAlarm()">
+
+    <div id="loader">
+        <div class="loader-logo">GAWYNT</div>
+        <div style="width: 200px; height: 2px; background: #222; margin-top:20px;">
+            <div id="progressBar" style="width:0%; height:100%; background:var(--neon-blue);"></div>
+        </div>
+    </div>
+
+    <div class="clock-section" id="clockUI">
+        <h2 style="color: var(--neon-blue); letter-spacing: 5px; font-size: 0.8rem;">GAWYNT CLOCK</h2>
+        <div class="picker-box">
+            <div class="selection-highlight"></div>
+            <div class="wheel" id="min-wheel"><div id="min-list"></div></div>
+            <div style="margin: 0 10px; font-weight: 900; color: #333; font-size: 2rem;">:</div>
+            <div class="wheel" id="sec-wheel"><div id="sec-list"></div></div>
+        </div>
+        <button class="btn-main" id="timerBtn" onclick="startGawyntClock()">Execute</button>
+    </div>
+
+    <button class="toggle-gawynt" id="gawyntToggle" onclick="toggleGawynt()">GAWYNT MANAGER</button>
+    
+    <div class="gawynt-drawer" id="gawyntDrawer">
+        <div style="width:50px; height:6px; background:#ccc; border-radius:10px; margin:0 auto 20px; cursor:pointer;" onclick="toggleGawynt()"></div>
+        <div style="font-family: Georgia; font-size: 1.5rem; border-bottom: 2px solid var(--ink); margin-bottom: 15px; font-weight: bold;">Gawynt Directives</div>
+        <div id="taskList" style="overflow-y: auto; height: 350px;"></div>
+        <button onclick="addRow()" style="width: 100%; margin-top: 15px; border: 1px dashed #000; padding: 10px; background: none; cursor: pointer; font-weight: bold;">+ Add New Directive</button>
+    </div>
+
+<script>
+    gsap.registerPlugin(Draggable);
+
+    let selMin = 5, selSec = 0, timerRunning = false, countdown = null;
+    const ITEM_H = 44; 
+    let audioCtx = null;
+
+    // --- ALARM SOUND FIX ---
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playAlarmSound() {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime); // Sound frequency
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1);
+        
+        // Flash screen red
+        document.body.style.background = "#ff3e3e";
+        setTimeout(() => { document.body.style.background = "var(--bg)"; }, 200);
+    }
+
+    // --- BOOT SEQUENCE ---
+    window.onload = () => {
+        gsap.to("#progressBar", { width: "100%", duration: 1.2 });
+        gsap.to("#loader", { y: "-100%", duration: 0.6, delay: 1.3, ease: "expo.inOut" });
+        gsap.to("#clockUI", { opacity: 1, duration: 0.5, delay: 1.8 });
+    };
+
+    // --- WHEEL SYSTEM ---
+    function buildWheel(id, count) {
+        const list = document.getElementById(id);
+        list.innerHTML = `<div class="item">&nbsp;</div><div class="item">&nbsp;</div>`;
+        for (let i = 0; i < count; i++) {
+            list.innerHTML += `<div class="item" data-val="${i}">${i < 10 ? '0'+i : i}</div>`;
+        }
+        list.innerHTML += `<div class="item">&nbsp;</div><div class="item">&nbsp;</div>`;
+    }
+    buildWheel('min-list', 60); buildWheel('sec-list', 60);
+
+    function setupWheel(listId, isMin) {
+        const list = document.getElementById(listId);
+        Draggable.create(list, {
+            type: "y", snap: v => Math.round(v / ITEM_H) * ITEM_H,
+            onDrag: update, onThrowUpdate: update, onThrowComplete: update
+        });
+        function update() {
+            const y = gsap.getProperty(list, "y");
+            const idx = Math.abs(Math.round(y / ITEM_H));
+            list.querySelectorAll('.item[data-val]').forEach(it => {
+                const val = parseInt(it.getAttribute('data-val'));
+                if(val === idx) {
+                    it.classList.add('active');
+                    if(isMin) selMin = val; else selSec = val;
+                } else { it.classList.remove('active'); }
+            });
+        }
+        gsap.set(list, {y: isMin ? -selMin * ITEM_H : -selSec * ITEM_H});
+        update();
+    }
+    setupWheel('min-list', true); setupWheel('sec-list', false);
+
+    // --- CLOCK ENGINE ---
+    function startGawyntClock() {
+        initAudio(); // Resumes audio context on click
+        if(timerRunning) return;
+
+        let total = (selMin * 60) + selSec;
+        if(total <= 0) return;
+
+        timerRunning = true;
+        const btn = document.getElementById('timerBtn');
+
+        countdown = setInterval(() => {
+            total--;
+            if (total >= 0) {
+                let m = Math.floor(total / 60);
+                let s = total % 60;
+                btn.innerText = `${m}:${s < 10 ? '0'+s : s} LEFT`;
+            } else {
+                clearInterval(countdown);
+                timerRunning = false;
+                btn.innerText = "EXECUTE";
+                // Play alarm sound multiple times
+                let beeps = 0;
+                const alarmLoop = setInterval(() => {
+                    playAlarmSound();
+                    beeps++;
+                    if(beeps > 4) clearInterval(alarmLoop);
+                }, 600);
+            }
+        }, 1000);
+    }
+
+    // --- MANAGER & BIG PRAISE ---
+    function toggleGawynt() {
+        const drawer = document.getElementById('gawyntDrawer');
+        const isOpen = gsap.getProperty(drawer, "bottom") === 0;
+        gsap.to(drawer, { bottom: isOpen ? -480 : 0, duration: 0.5 });
+    }
+
+    function addRow() {
+        const list = document.getElementById('taskList');
+        const row = document.createElement('div');
+        row.className = 'task-row';
+        row.innerHTML = `<div class="check-btn" onclick="praiseUser(this)"></div>
+                         <input type="text" placeholder="Entry...">
+                         <div class="praise-text">NICE JOB!</div>`;
+        list.appendChild(row);
+    }
+
+    function praiseUser(el) {
+        if (el.classList.contains('done')) return;
+        el.classList.add('done');
+        const praise = el.parentElement.querySelector('.praise-text');
+        
+        // GIANT SCALE ANIMATION
+        gsap.fromTo(praise, 
+            { opacity: 0, scale: 0.5, y: 0 }, 
+            { opacity: 1, scale: 1.2, y: -100, duration: 0.6, ease: "back.out(1.7)", onComplete: () => {
+                gsap.to(praise, { opacity: 0, scale: 2, duration: 0.4, delay: 0.5 });
+            }}
+        );
+    }
+
+    for(let i=0; i<6; i++) addRow();
+</script>
+</body>
+</html>
